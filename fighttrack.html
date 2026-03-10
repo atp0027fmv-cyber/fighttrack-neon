@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>FightTrack Neon</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Arial',sans-serif;transition:all 0.3s;}
+body{background:#000;color:#39ff14;min-height:100vh;display:flex;flex-direction:column;}
+header{width:100%;background:#000;padding:20px;text-align:center;font-size:24px;font-weight:bold;box-shadow:0 3px 10px rgba(0,255,20,0.5);}
+#toggle-btn{position:absolute;top:25px;left:20px;font-size:28px;cursor:pointer;}
+#sidebar{position:fixed;left:-260px;top:0;width:260px;height:100%;background:rgba(0,0,0,0.95);backdrop-filter:blur(5px);box-shadow:2px 0 15px rgba(0,255,20,0.7);padding-top:80px;transition:left 0.3s;z-index:1000;}
+#sidebar.active{left:0;}
+#sidebar button{display:block;width:90%;margin:10px auto;padding:12px;border:none;border-radius:10px;background:#39ff14;color:#000;font-weight:bold;cursor:pointer;}
+#sidebar button:hover{background:#0f0;}
+#main{flex:1;margin-left:0;transition:margin-left 0.3s;}
+.container{margin:30px auto;width:90%;max-width:800px;text-align:center;background:#000;padding:20px;border-radius:15px;box-shadow:0 4px 15px rgba(0,255,20,0.5);}
+input,select,button{width:90%;padding:12px;margin:10px 0;border:none;border-radius:10px;font-size:16px;background:#111;color:#39ff14;}
+button{font-weight:bold;cursor:pointer;}
+button:hover{background:#0f0;color:#000;}
+.panel{display:none;margin-top:20px;animation:fadeIn 0.5s;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.card-container{display:flex;overflow-x:auto;scroll-behavior:smooth;margin:10px 0;}
+.card{min-width:220px;background:#111;border-radius:15px;padding:15px;margin:0 10px;box-shadow:0 3px 10px rgba(57,255,20,0.5);flex-shrink:0;transition:transform 0.3s;}
+.card:hover{transform:scale(1.05);}
+canvas{background:#000;border-radius:15px;margin-top:10px;}
+ul{list-style:none;padding:0;}
+li{padding:5px 0;border-bottom:1px solid #39ff14;animation:fadeIn 0.5s;}
+.notification{position:fixed;top:20px;right:-300px;background:#39ff14;padding:15px;border-radius:10px;box-shadow:0 3px 10px rgba(0,255,20,0.5);transition:right 0.5s;color:#000;font-weight:bold;z-index:2000;}
+.notification.show{right:20px;}
+footer{margin-top:20px;padding:10px;color:#39ff14;font-size:12px;text-align:center;}
+</style>
+</head>
+<body>
+
+<header>
+<span id="toggle-btn">☰</span>
+🥊 FightTrack Neon
+</header>
+
+<div id="sidebar">
+<button onclick="showPanel('atleta')">Painel Atleta</button>
+<button onclick="showPanel('treinador')">Painel Treinador</button>
+<button onclick="showPanel('academia')">Painel Academia</button>
+<button onclick="showPanel('ranking')">Ranking</button>
+<button onclick="logout()">Logout</button>
+</div>
+
+<div id="main">
+<div class="container" id="login-container">
+<h2>Login</h2>
+<input id="username" placeholder="Nome">
+<input id="password" type="password" placeholder="Senha">
+<select id="tipo">
+<option value="atleta">Atleta</option>
+<option value="treinador">Treinador</option>
+<option value="academia">Academia</option>
+</select>
+<button onclick="login()">Entrar</button>
+<p id="login-msg" style="color:#39ff14;"></p>
+<button onclick="register()">Registrar nova conta</button>
+</div>
+
+<div id="atleta" class="panel">
+<h2>Painel do Atleta</h2>
+<div class="card-container">
+<div class="card">
+<h3>Adicionar Treino</h3>
+<input type="text" id="treino-name" placeholder="Treino">
+<input type="number" id="treino-duration" placeholder="Duração (min)">
+<button onclick="addTreino()">Adicionar</button>
+</div>
+<div class="card">
+<h3>Recomendação IA</h3>
+<p id="recomendacao">Clique para ver recomendação</p>
+<button onclick="recomendaTreino()">Recomendar treino</button>
+</div>
+</div>
+<div class="card">
+<h3>Lista de Treinos</h3>
+<ul id="treino-list"></ul>
+</div>
+<div class="card">
+<h3>Gráfico combinado</h3>
+<canvas id="graficoTreino" width="400" height="200"></canvas>
+</div>
+</div>
+
+<div id="treinador" class="panel">
+<h2>Painel do Treinador</h2>
+<div class="card-container" id="cards-treinador">
+<div class="card">
+<h3>Atletas</h3>
+<ul id="lista-atletas"></ul>
+</div>
+<div class="card">
+<h3>Criar Treino</h3>
+<input id="treino-nome-treinador" placeholder="Nome do treino">
+<button onclick="criarTreino()">Criar</button>
+</div>
+</div>
+</div>
+
+<div id="academia" class="panel">
+<h2>Painel Academia</h2>
+<div class="card">
+<h3>Atletas registados</h3>
+<ul id="lista-academia"></ul>
+</div>
+</div>
+
+<div id="ranking" class="panel">
+<h2>🏆 Ranking de Atletas</h2>
+<div class="card">
+<ul id="ranking-list"></ul>
+</div>
+</div>
+</div>
+
+<div class="notification" id="notification">Treino Adicionado!</div>
+
+<footer>© 2026 FightTrack Neon</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const sidebar=document.getElementById("sidebar");
+document.getElementById("toggle-btn").onclick=()=>{sidebar.classList.toggle("active");};
+
+let users=JSON.parse(localStorage.getItem("fighttrackUsers")||"{}");
+let currentUser="",treinos=[];
+
+function login(){
+    const user=document.getElementById("username").value;
+    const pass=document.getElementById("password").value;
+    const tipo=document.getElementById("tipo").value;
+    users=JSON.parse(localStorage.getItem("fighttrackUsers")||"{}");
+    if(users[user] && users[user].password===pass && users[user].tipo===tipo){
+        document.getElementById("login-container").style.display="none";
+        currentUser=user; treinos=users[user].treinos||[];
+        showPanel(tipo);
+        renderTreinos(); updateChart(); loadRanking();
+    } else {
+        document.getElementById("login-msg").innerText="Usuário ou senha inválidos!";
+    }
+}
+function register(){
+    const user=document.getElementById("username").value;
+    const pass=document.getElementById("password").value;
+    const tipo=document.getElementById("tipo").value;
+    if(!user||!pass) return alert("Preencha nome e senha!");
+    users=JSON.parse(localStorage.getItem("fighttrackUsers")||"{}");
+    if(users[user]) return alert("Usuário já existe!");
+    users[user]={password:pass,treinos:[],tipo:tipo};
+    localStorage.setItem("fighttrackUsers",JSON.stringify(users));
+    alert("Conta registrada com sucesso!");
+}
+function logout(){ location.reload(); }
+function showPanel(panel){
+    document.querySelectorAll(".panel").forEach(p=>p.style.display="none");
+    document.getElementById(panel).style.display="block";
+}
+
+function addTreino(){
+    const name=document.getElementById("treino-name").value;
+    const duration=parseInt(document.getElementById("treino-duration").value);
+    if(!name||!duration) return alert("Preencha treino e duração!");
+    const dias=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+    const date=new Date();
+    const treino={name,duration,day:dias[date.getDay()]};
+    treinos.push(treino);
+    saveTreinos();
+    renderTreinos();
+    updateChart();
+    loadRanking();
+    showNotification("Treino Adicionado!");
+}
+function renderTreinos(){
+    const ul=document.getElementById("treino-list");
+    ul.innerHTML="";
+    treinos.forEach(t=>{
+        const li=document.createElement("li");
+        li.innerText=`${t.name} - ${t.duration} min (${t.day})`;
+        ul.appendChild(li);
+    });
+}
+function saveTreinos(){
+    users=JSON.parse(localStorage.getItem("fighttrackUsers")||"{}");
+    users[currentUser].treinos=treinos;
+    localStorage.setItem("fighttrackUsers",JSON.stringify(users));
+}
+
+let grafico=null;
+function updateChart(){
+    const dias=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+    let totDia=dias.map(d=>0);
+    treinos.forEach(t=>{ let idx=dias.indexOf(t.day); if(idx>=0) totDia[idx]+=t.duration; });
+    const ctx=document.getElementById("graficoTreino").getContext('2d');
+    if(grafico) grafico.destroy();
+    grafico=new Chart(ctx,{
+        type:'bar',
+        data:{
+            labels:dias,
+            datasets:[
+                { type:'bar', label:'Treino diário', data:totDia, backgroundColor:'rgba(57,255,20,0.7)' },
+                { type:'line', label:'Tendência', data:totDia, borderColor:'#39ff14', tension:0.4, fill:false, pointRadius:5 }
+            ]
+        },
+        options:{ responsive:true, scales:{y:{beginAtZero:true}} }
+    });
+}
+
+function recomendaTreino(){
+    const opcoes=["Boxe - Velocidade","Muay Thai - Resistência","Jiu-Jitsu - Técnica","CrossFit - Força"];
+    document.getElementById("recomendacao").innerText=opcoes[Math.floor(Math.random()*opcoes.length)];
+}
+
+function loadRanking(){
+    const ul=document.getElementById("ranking-list");
+    ul.innerHTML="";
+    users=JSON.parse(localStorage.getItem("fighttrackUsers")||"{}");
+    const ranking=Object.keys(users).filter(u=>users[u].tipo==="atleta").map(u=>{
+        const total=users[u].treinos.reduce((acc,t)=>acc+t.duration,0);
+        return {name:u,total};
+    }).sort((a,b)=>b.total-a.total);
+    ranking.forEach((u,i)=>{
+        const li=document.createElement("li");
+        li.innerText=`${i+1}. ${u.name} - ${u.total} min`;
+        ul.appendChild(li);
+    });
+}
+
+function showNotification(msg){
+    const notif=document.getElementById("notification");
+    notif.innerText=msg;
+    notif.classList.add("show");
+    setTimeout(()=>{notif.classList.remove("show");},3000);
+}
+</script>
+</body>
+</html>
